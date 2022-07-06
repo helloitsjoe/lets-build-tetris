@@ -17,7 +17,7 @@ const Colors = {
 
 const WIDTH = 400;
 const HEIGHT = 600;
-const PIXEL = 10;
+const PIXEL = 20;
 
 let movesPerSecond = 1;
 
@@ -38,12 +38,16 @@ const bg = {
   }
 }
 
-const kickOff = () => {
+const startLoop = () => {
   let id = null;
+  let prev = 0;
   function loop() {
     id = requestAnimationFrame((elapsed) => {
-      update(piece, floor)
-      draw(piece, floor, bg)
+      if (elapsed - prev > 1000) {
+        update(piece, floor)
+        draw(piece, floor, bg)
+        prev = elapsed
+      }
       loop()
     });
   }
@@ -126,11 +130,11 @@ function createPiece(ctx) {
 
   const render = () => {
     ctx.fillStyle = color;
-    ctx.fillRect(pos.x, pos.y, pos.x + PIXEL, pos.y + PIXEL)
+    ctx.fillRect(pos.x, pos.y, PIXEL, PIXEL)
   }
 
   const update = () => {
-    pos.y += 1 * PIXEL;
+    pos.y += (1 * PIXEL);
     console.log('pos.y', pos.y);
   }
 
@@ -144,16 +148,15 @@ function createPiece(ctx) {
 const playPauseButton = document.getElementById('playPause');
 const resetButton = document.getElementById('reset');
 
-let playing = false;
-let getId = null;
+let getId = startLoop();
 playPauseButton.onclick = () => {
-  if (!playing) {
-    getId = kickOff();
+  if (!getId) {
+    getId = startLoop();
   } else {
     const id = getId();
     cancelAnimationFrame(id)
+    getId = null;
   }
-  playing = !playing;
 }
 resetButton.onclick = () => {
   bg.render();
