@@ -6,7 +6,6 @@ const canvas = document.getElementById('canvas');
 canvas.style.backgroundColor = 'black';
 
 const Colors = {
-  BLACK: 'black',
   BLUE: 'dodgerblue',
   RED: 'tomato',
   GREEN: 'lime',
@@ -18,15 +17,15 @@ const Colors = {
 const WIDTH = 20;
 const HEIGHT = 30;
 const PIXEL = 20;
+const DEFAULT_SPEED = 1;
 
 // TODO: Increase as you level up
-let movesPerSecond = 1;
+let movesPerSecond = DEFAULT_SPEED;
 
 const ctx = canvas.getContext('2d');
 
-let piece = createPiece(ctx);
 let floor = createFloor();
-console.log(floor);
+let piece = createPiece(ctx, floor);
 
 function createFloor() {
   return Array(HEIGHT).fill([])
@@ -49,8 +48,8 @@ const startLoop = () => {
   let prev = 0;
   function loop() {
     id = requestAnimationFrame((elapsed) => {
-      if (elapsed - prev > 1000) {
-        updateWorld(piece, floor)
+      if (elapsed - prev > 1000 / movesPerSecond) {
+        updateWorld(piece)
         prev = elapsed
       }
       drawWorld(piece, floor, bg)
@@ -63,15 +62,10 @@ const startLoop = () => {
 }
 
 
-function updateWorld(piece, floor) {
-  // Update falling piece
-  piece.update(floor)
-  // If piece touches floor:
-  //   add it to floor 
-  //   get next shape from box
-  //   add random shape to box
+function updateWorld(piece) {
+  piece.update()
   // Update lines if piece clears a row
-  // End game if piece touches the top of the screen
+  // TODO: End game if piece touches the top of the screen
 }
 
 function drawWorld(piece, floor, bg) {
@@ -95,17 +89,17 @@ function getShape() {
     O: [[1, 1],[1, 1]],
   }
 
-  return shapes.O
+  const shapeValues = Object.values(shapes);
+  return shapeValues[Math.floor(Math.random() * shapeValues.length)]
 }
 
-// randomize shapes
+function getRandomColor() {
+  const colorValues = Object.values(Colors);
+  return colorValues[Math.floor(Math.random() * colorValues.length)]
+}
 
-// keyboard commands
-// turn left
-// turn right
-// pop down
-function registerKeydown(fns) {
-  const cb = (e) => {
+function registerKeys(fns) {
+  const down = (e) => {
     switch (e.key) {
       case 'ArrowRight': 
         fns.moveRight()
@@ -114,75 +108,145 @@ function registerKeydown(fns) {
         fns.moveLeft()
         break;
       case 'ArrowDown': 
-      case 'Space': 
         fns.drop()
+        break;
+      case ' ':
+        fns.rotate()
         break;
     }
   }
 
-  document.addEventListener('keydown',cb)
-  return () => document.removeEventListener('keydown', cb);
+  const up = (e) => {
+    switch (e.key) {
+      case 'ArrowDown': 
+        fns.stopDrop()
+        break;
+    }
+  }
+
+  document.addEventListener('keydown', down)
+  document.addEventListener('keyup', up)
+
+  return () => {
+    document.removeEventListener('keydown', down);
+    document.removeEventListener('keyup', up);
+  }
 }
+
+// function rotateShape(shape) {
+//   const newShape = Array(shape[0].length).fill(0).map(() => Array(shape.length).fill(0))
+
+//   shape.forEach((row, rowIdx) => {
+//     row.forEach((box, boxIdx) => {
+//       console.log('box', box);
+//       newShape[boxIdx][rowIdx] = box
+//     })
+//   })
+
+//   return newShape;
+// }
 
 function createTile(ctx, color, row, col) {
   const isEmpty = !color;
-  const fill = color || 'rgba(255, 255, 255, 0)';
+  const fillColor = color || 'rgba(255, 255, 255, 0)';
 
   const render = () => {
-    ctx.fillStyle = fill;
+    ctx.fillStyle = fillColor;
     ctx.fillRect(col * PIXEL, row * PIXEL, PIXEL, PIXEL)
   }
 
   return { render, isEmpty } 
 }
 
-function createPiece(ctx) {
+function createPiece(ctx, floor) {
   let pos = { x: WIDTH / 2, y: 0 }
+  let shape = getShape();
+  let color = getRandomColor();
 
-  // TODO: Randomize
-  const shape = getShape();
-  const color = Colors.BLUE;
+  function reset() {
+    pos = { x: WIDTH / 2, y: 0 }
+    shape = getShape();
+    color = getRandomColor();
+  }
 
   const moveRight = () => {
+    // TODO: enable moving under ledges
+    // Check wall
+    if (pos.x + 1 >= WIDTH) return;
+    // Check floor
+    if (!floor[pos.y][pos.x + 1].isEmpty) return;
+
     pos.x += 1;
   }
 
   const moveLeft = () => {
+    // TODO: enable moving under ledges
+    // Check wall
+    if (pos.x - 1 < 0) return;
+    // Check floor
+    if (!floor[pos.y][pos.x - 1].isEmpty) return;
+
     pos.x -= 1;
   }
 
-  const drop = () => {
-    if (pos.y + 5 < HEIGHT) {
-      pos.y += 5;
-    }
-  }
+  const drop = () => movesPerSecond = 60;
+  const stopDrop = () => movesPerSecond = DEFAULT_SPEED;
+  // TODO: Not working yet
+  // const rotate = () => {
+  //   console.log('shape before', shape);
+  //   shape = rotateShape(shape);
+  //   console.log('shape after', shape);
+  // }
 
-  const cleanup = registerKeydown({moveRight, moveLeft, drop});
+  const cleanup = registerKeys({moveRight, moveLeft, drop, stopDrop, rotate});
 
   const render = () => {
-    // console.log('pos', pos);
     ctx.fillStyle = color;
-    ctx.fillRect(pos.x * PIXEL, pos.y * PIXEL, PIXEL, PIXEL)
-    // shape.forEach((box) => {
-    //   if (!!box) {
-    //     ctx.fillRect(pos.x, pos.y, PIXEL, PIXEL)
-    //   }
-    // });
+    // Single block for debugging: ctx.fillRect(pos.x * PIXEL, pos.y * PIXEL, PIXEL, PIXEL)
+    shape.forEach((row, rowIdx) => {
+      row.forEach((box, boxIdx) => {
+        if (!!box) {
+          const boxOriginX = pos.x + boxIdx;
+          const boxOriginY = pos.y + rowIdx;
+          ctx.fillRect(boxOriginX * PIXEL, boxOriginY * PIXEL, PIXEL, PIXEL)
+        }
+      })
+    });
   }
 
-  const update = (floor) => {
-    // If !!floor[row][col] for any of the piece's boxes, stop the piece and move it to the floor array
-    // TODO: Will have to block horizontal movement
-    if (!floor[pos.y + 1]?.[pos.x].isEmpty) {
-      floor[pos.y][pos.x] = createTile(ctx, color, pos.y, pos.x)
+  const update = () => {
+    // Single box for debugging
+    // if (!!box) {
+    //   ctx.fillRect(pos.x * PIXEL, pos.y * PIXEL, PIXEL, PIXEL)
+    // }
+    // Can be optimized by just looking at last row
+    let hitFloor = false;
+    shape.forEach((row, rowIdx) => {
+      row.forEach((box, boxIdx) => {
+        const boxOriginX = pos.x + boxIdx;
+        const boxOriginY = pos.y + rowIdx;
+
+        if (box && !floor[boxOriginY + 1]?.[boxOriginX].isEmpty) {
+          shape.forEach((row, rowIdx) => {
+            row.forEach((box, boxIdx) => {
+              const boxOriginX = pos.x + boxIdx;
+              const boxOriginY = pos.y + rowIdx;
+
+              if (box) {
+                floor[boxOriginY][boxOriginX] = createTile(ctx, color, boxOriginY, boxOriginX)
+                hitFloor = true;
+              }
+            })
+          })
+        }
+      })
+    });
+
+    if (hitFloor) {
       reset()
-    } else {
+    } else  {
       pos.y += 1;
     }
-  }
-
-  const reset = () => {
-    pos = { x: WIDTH / 2, y: 0 }
   }
 
   return { pos, render, update, cleanup, reset }
