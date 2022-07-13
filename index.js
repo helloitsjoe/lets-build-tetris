@@ -79,18 +79,20 @@ function drawWorld(piece, floor, bg) {
 }
 
 function getShape() {
+  // Could hardcode all rotations to start
   const shapes = {
-    L: [[1, 0], [1, 0], [1, 1]], 
-    J: [[0, 1], [0, 1], [1, 1]], 
-    T: [[1, 0], [1, 1], [1, 0]], 
-    S: [[1, 0], [1, 1], [0, 1]], 
-    Z: [[0, 1], [1, 1], [1, 0]], 
-    I: [[1], [1], [1], [1]], 
-    O: [[1, 1],[1, 1]],
+    L: [[[1, 0], [1, 0], [1, 1]], [[0, 0, 1], [1, 1, 1]], [[1, 1], [0, 1], [0, 1]], [[1, 1, 1], [1, 0, 0]]], 
+    J: [[[0, 1], [0, 1], [1, 1]],  [], [], []], 
+    T: [[[1, 0], [1, 1], [1, 0]], [], [], []], 
+    S: [[[1, 0], [1, 1], [0, 1]], [], [], []], 
+    Z: [[[0, 1], [1, 1], [1, 0]], [], [], []], 
+    I: [[[1], [1], [1], [1]], [], [], []], 
+    O: [[[1, 1],[1, 1]],[], [], []], 
   }
 
   const shapeValues = Object.values(shapes);
-  return shapeValues[Math.floor(Math.random() * shapeValues.length)]
+  return shapes.L
+  // return shapeValues[Math.floor(Math.random() * shapeValues.length)]
 }
 
 function getRandomColor() {
@@ -110,6 +112,7 @@ function registerKeys(fns) {
       case 'ArrowDown': 
         fns.drop()
         break;
+      case 'ArrowUp':
       case ' ':
         fns.rotate()
         break;
@@ -134,11 +137,8 @@ function registerKeys(fns) {
 }
 
 // function rotateShape(shape) {
-//   const newShape = Array(shape[0].length).fill(0).map(() => Array(shape.length).fill(0))
-
 //   shape.forEach((row, rowIdx) => {
 //     row.forEach((box, boxIdx) => {
-//       console.log('box', box);
 //       newShape[boxIdx][rowIdx] = box
 //     })
 //   })
@@ -161,6 +161,7 @@ function createTile(ctx, color, row, col) {
 function createPiece(ctx, floor) {
   let pos = { x: WIDTH / 2, y: 0 }
   let shape = getShape();
+  let rotation = 0;
   let color = getRandomColor();
 
   function reset() {
@@ -170,7 +171,7 @@ function createPiece(ctx, floor) {
   }
 
   const moveRight = () => {
-    // TODO: enable moving under ledges
+    // TODO: enable moving under ledges, block sideways
     // Check wall
     if (pos.x + 1 >= WIDTH) return;
     // Check floor
@@ -180,7 +181,7 @@ function createPiece(ctx, floor) {
   }
 
   const moveLeft = () => {
-    // TODO: enable moving under ledges
+    // TODO: enable moving under ledges, block sideways
     // Check wall
     if (pos.x - 1 < 0) return;
     // Check floor
@@ -191,19 +192,16 @@ function createPiece(ctx, floor) {
 
   const drop = () => movesPerSecond = 60;
   const stopDrop = () => movesPerSecond = DEFAULT_SPEED;
-  // TODO: Not working yet
-  // const rotate = () => {
-  //   console.log('shape before', shape);
-  //   shape = rotateShape(shape);
-  //   console.log('shape after', shape);
-  // }
+  const rotate = () => {
+    rotation = (rotation + 1) % 4;
+  }
 
   const cleanup = registerKeys({moveRight, moveLeft, drop, stopDrop, rotate});
 
   const render = () => {
     ctx.fillStyle = color;
     // Single block for debugging: ctx.fillRect(pos.x * PIXEL, pos.y * PIXEL, PIXEL, PIXEL)
-    shape.forEach((row, rowIdx) => {
+    shape[rotation].forEach((row, rowIdx) => {
       row.forEach((box, boxIdx) => {
         if (!!box) {
           const boxOriginX = pos.x + boxIdx;
@@ -221,13 +219,13 @@ function createPiece(ctx, floor) {
     // }
     // Can be optimized by just looking at last row
     let hitFloor = false;
-    shape.forEach((row, rowIdx) => {
+    shape[rotation].forEach((row, rowIdx) => {
       row.forEach((box, boxIdx) => {
         const boxOriginX = pos.x + boxIdx;
         const boxOriginY = pos.y + rowIdx;
 
         if (box && !floor[boxOriginY + 1]?.[boxOriginX].isEmpty) {
-          shape.forEach((row, rowIdx) => {
+          shape[rotation].forEach((row, rowIdx) => {
             row.forEach((box, boxIdx) => {
               const boxOriginX = pos.x + boxIdx;
               const boxOriginY = pos.y + rowIdx;
