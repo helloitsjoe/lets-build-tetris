@@ -36,7 +36,7 @@ let movesPerSecond = DEFAULT_SPEED;
 const ctx = canvas.getContext('2d');
 
 let floor = createFloor();
-let piece = createPiece(ctx, floor);
+let piece = createPiece(ctx, floor.tiles);
 
 function getRandom(obj) {
   const values = Object.values(obj);
@@ -51,7 +51,7 @@ function createFloor() {
         return createTile(ctx, color, row, col)
       }))
 
-  const checkTop = () => tiles[0].some((tile) => !!tile)
+  const checkTop = () => tiles[0].some((tile) => !tile.isEmpty)
 
   return {tiles, checkTop}
 }
@@ -73,6 +73,7 @@ const startLoop = () => {
         if (floor.checkTop()) {
           cancelAnimationFrame(id);
           alert('Game Over!')
+          resetGame();
         }
         prev = elapsed
       }
@@ -217,7 +218,7 @@ function createPiece(ctx, floorTiles) {
             row.forEach((box, boxIdx) => {
               const boxOriginX = pos.x + boxIdx;
               const boxOriginY = pos.y + rowIdx;
-
+              console.log('floorTiles', floorTiles);
               if (box) {
                 floorTiles[boxOriginY][boxOriginX] = createTile(ctx, color, boxOriginY, boxOriginX)
                 // TODO: Return early?
@@ -258,8 +259,11 @@ playPauseButton.onclick = () => {
     getId = null;
   }
 }
-resetButton.onclick = () => {
+
+function resetGame() {
   bg.render();
   piece.reset();
   piece.render();
 }
+
+resetButton.onclick = resetGame
