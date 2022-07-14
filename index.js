@@ -44,12 +44,16 @@ function getRandom(obj) {
 }
 
 function createFloor() {
-  return Array(HEIGHT).fill([])
+  const tiles = Array(HEIGHT).fill([])
     .map((_, row) => Array(WIDTH).fill(null)
       .map((_, col) => {
         const color = row === HEIGHT - 1 ? Colors.BROWN : null;
         return createTile(ctx, color, row, col)
       }))
+
+  const checkTop = () => tiles[0].some((tile) => !!tile)
+
+  return {tiles, checkTop}
 }
 
 const bg = {
@@ -66,9 +70,13 @@ const startLoop = () => {
     id = requestAnimationFrame((elapsed) => {
       if (elapsed - prev > 1000 / movesPerSecond) {
         updateWorld(piece)
+        if (floor.checkTop()) {
+          cancelAnimationFrame(id);
+          alert('Game Over!')
+        }
         prev = elapsed
       }
-      drawWorld(piece, floor, bg)
+      drawWorld(piece, floor.tiles, bg)
       loop()
     });
   }
@@ -85,10 +93,10 @@ function updateWorld(piece) {
   // TODO: End game if piece touches the top of the screen
 }
 
-function drawWorld(piece, floor, bg) {
+function drawWorld(piece, floorTiles, bg) {
   bg.render();
   piece.render();
-  floor.forEach((row) => {
+  floorTiles.forEach((row) => {
     row.forEach((tile) => {
       tile.render();
     })
@@ -143,11 +151,12 @@ function createTile(ctx, color, row, col) {
   return { render, isEmpty } 
 }
 
-function createPiece(ctx, floor) {
+function createPiece(ctx, floorTiles) {
   let pos = { x: WIDTH / 2, y: 0 }
   let shape = getRandom(shapes);
   let color = getRandom(Colors);
   let rotation = 0;
+  let endGame = false;
 
   function reset() {
     pos = { x: WIDTH / 2, y: 0 }
@@ -161,7 +170,7 @@ function createPiece(ctx, floor) {
     // Check wall
     if (pos.x + 1 >= WIDTH) return;
     // Check floor
-    if (!floor[pos.y][pos.x + 1].isEmpty) return;
+    if (!floorTiles[pos.y][pos.x + 1].isEmpty) return;
 
     pos.x += 1;
   }
@@ -171,7 +180,7 @@ function createPiece(ctx, floor) {
     // Check wall
     if (pos.x - 1 < 0) return;
     // Check floor
-    if (!floor[pos.y][pos.x - 1].isEmpty) return;
+    if (!floorTiles[pos.y][pos.x - 1].isEmpty) return;
 
     pos.x -= 1;
   }
@@ -203,14 +212,15 @@ function createPiece(ctx, floor) {
         const boxOriginX = pos.x + boxIdx;
         const boxOriginY = pos.y + rowIdx;
 
-        if (box && !floor[boxOriginY + 1]?.[boxOriginX].isEmpty) {
+        if (box && !floorTiles[boxOriginY + 1]?.[boxOriginX].isEmpty) {
           shape[rotation].forEach((row, rowIdx) => {
             row.forEach((box, boxIdx) => {
               const boxOriginX = pos.x + boxIdx;
               const boxOriginY = pos.y + rowIdx;
 
               if (box) {
-                floor[boxOriginY][boxOriginX] = createTile(ctx, color, boxOriginY, boxOriginX)
+                floorTiles[boxOriginY][boxOriginX] = createTile(ctx, color, boxOriginY, boxOriginX)
+                // TODO: Return early?
                 hitFloor = true;
               }
             })
@@ -226,6 +236,9 @@ function createPiece(ctx, floor) {
     const hitFloor = _checkHitFloor();
 
     if (hitFloor) {
+      if (_checkFloorAtTop()) {
+        endGame = true;
+      }
       reset()
     } else  {
       pos.y += 1;
