@@ -135,6 +135,7 @@ function registerKeys(fns) {
   document.addEventListener('keyup', up)
 
   return () => {
+    fns.stopDrop();
     document.removeEventListener('keydown', down);
     document.removeEventListener('keyup', up);
   }
@@ -208,29 +209,36 @@ function createPiece(ctx, floorTiles) {
   const _checkHitFloor = () => {
     // Can be optimized by just looking at last row
     let hitFloor = false;
-    shape[rotation].forEach((row, rowIdx) => {
-      row.forEach((box, boxIdx) => {
+    for (const [rowIdx, row] of Object.entries(shape[rotation])) {
+    // shape[rotation].forEach((row, rowIdx) => {
+      for (const [boxIdx, box] of Object.entries(row)) {
+      // row.forEach((box, boxIdx) => {
+        console.log('boxIdx', boxIdx);
+        console.log('rowIdx', rowIdx);
         const boxOriginX = pos.x + boxIdx;
         const boxOriginY = pos.y + rowIdx;
 
         if (box && !floorTiles[boxOriginY + 1]?.[boxOriginX].isEmpty) {
-          shape[rotation].forEach((row, rowIdx) => {
-            row.forEach((box, boxIdx) => {
+          for (const [rowIdx, row] of Object.entries(shape[rotation])) {
+          // shape[rotation].forEach((row, rowIdx) => {
+            for (const [boxIdx, box] of Object.entries(row)) {
+          // shape[rotation].forEach((row, rowIdx) => {
+          //   row.forEach((box, boxIdx) => {
               const boxOriginX = pos.x + boxIdx;
               const boxOriginY = pos.y + rowIdx;
-              console.log('floorTiles', floorTiles);
               if (box) {
                 floorTiles[boxOriginY][boxOriginX] = createTile(ctx, color, boxOriginY, boxOriginX)
                 // TODO: Return early?
-                hitFloor = true;
+                // hitFloor = true;
+                return true;
               }
-            })
-          })
+            }
+          }
         }
-      })
-    });
+      }
+    };
 
-    return hitFloor;
+    // return hitFloor;
   }
 
   const update = () => {
@@ -262,7 +270,9 @@ playPauseButton.onclick = () => {
 
 function resetGame() {
   bg.render();
-  piece.reset();
+  piece.cleanup();
+  floor = createFloor();
+  piece = createPiece(ctx, floor.tiles);
   piece.render();
 }
 
