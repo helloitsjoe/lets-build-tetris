@@ -90,8 +90,7 @@ const startLoop = () => {
 
 function updateWorld(piece) {
   piece.update()
-  // Update lines if piece clears a row
-  // TODO: End game if piece touches the top of the screen
+  // TODO: Update lines if piece clears a row
 }
 
 function drawWorld(piece, floorTiles, bg) {
@@ -209,36 +208,28 @@ function createPiece(ctx, floorTiles) {
   const _checkHitFloor = () => {
     // Can be optimized by just looking at last row
     let hitFloor = false;
-    for (const [rowIdx, row] of Object.entries(shape[rotation])) {
-    // shape[rotation].forEach((row, rowIdx) => {
-      for (const [boxIdx, box] of Object.entries(row)) {
-      // row.forEach((box, boxIdx) => {
-        console.log('boxIdx', boxIdx);
-        console.log('rowIdx', rowIdx);
+    shape[rotation].forEach((row, rowIdx) => {
+      row.forEach((box, boxIdx) => {
         const boxOriginX = pos.x + boxIdx;
         const boxOriginY = pos.y + rowIdx;
 
         if (box && !floorTiles[boxOriginY + 1]?.[boxOriginX].isEmpty) {
-          for (const [rowIdx, row] of Object.entries(shape[rotation])) {
-          // shape[rotation].forEach((row, rowIdx) => {
-            for (const [boxIdx, box] of Object.entries(row)) {
-          // shape[rotation].forEach((row, rowIdx) => {
-          //   row.forEach((box, boxIdx) => {
+          shape[rotation].forEach((row, rowIdx) => {
+            row.forEach((box, boxIdx) => {
               const boxOriginX = pos.x + boxIdx;
               const boxOriginY = pos.y + rowIdx;
               if (box) {
                 floorTiles[boxOriginY][boxOriginX] = createTile(ctx, color, boxOriginY, boxOriginX)
-                // TODO: Return early?
-                // hitFloor = true;
-                return true;
+                // Can't return early because we need to transfer all tiles to floor
+                hitFloor = true;
               }
-            }
-          }
+            })
+          })
         }
-      }
-    };
+      })
+    });
 
-    // return hitFloor;
+    return hitFloor;
   }
 
   const update = () => {
