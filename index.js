@@ -236,9 +236,6 @@ function createPiece(ctx, floorTiles) {
     const hitFloor = _checkHitFloor();
 
     if (hitFloor) {
-      if (_checkFloorAtTop()) {
-        endGame = true;
-      }
       reset()
     } else  {
       pos.y += 1;
