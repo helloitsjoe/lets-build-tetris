@@ -1,34 +1,35 @@
-// TODO: Modules
-// import {Colors} from './utils.js'
-
 const canvas = document.getElementById('canvas');
 
+const WIDTH = 10;
+const HEIGHT = 20;
+const PIXEL = 20;
+const DEFAULT_SPEED = 1;
+
+canvas.width = WIDTH * PIXEL;
+canvas.height = HEIGHT * PIXEL;
 canvas.style.backgroundColor = 'black';
 
-const Colors = {
-  BLUE: 'dodgerblue',
-  RED: 'tomato',
-  GREEN: 'lime',
-  ORANGE: 'orange',
-  YELLOW: 'goldenrod',
-  BROWN: 'brown',
+const colors = {
+  L: 'dodgerblue',
+  J: 'tomato',
+  T: 'lime',
+  S: 'orange',
+  Z: 'yellow',
+  I: 'violet',
+  O: 'blueviolet',
 }
 
+// TODO: Make sure shapes rotate in the right direction
 // Hardcode all rotations to start
 const shapes = {
-  L: [[[1, 0], [1, 0], [1, 1]], [[0, 0, 1], [1, 1, 1]], [[1, 1], [0, 1], [0, 1]], [[1, 1, 1], [1, 0, 0]]], 
-  J: [[[0, 1], [0, 1], [1, 1]], [[1, 1, 1], [0, 0, 1]], [[1, 1], [1, 0], [1, 0]], [[1, 0, 0], [1, 1, 1]]], 
+  L: [[[1, 0], [1, 0], [1, 1]], [[1, 1, 1], [1, 0, 0]], [[1, 1], [0, 1], [0, 1]], [[0, 0, 1], [1, 1, 1]] ], 
+  J: [[[0, 1], [0, 1], [1, 1]], [[1, 0, 0], [1, 1, 1]], [[1, 1], [1, 0], [1, 0]], [[1, 1, 1], [0, 0, 1]]], 
   T: [[[1, 0], [1, 1], [1, 0]], [[0, 1, 0], [1,1, 1]], [[0, 1], [1, 1], [0, 1]], [[1, 1, 1], [0, 1, 0]]], 
   S: [[[1, 0], [1, 1], [0, 1]], [[0, 1, 1], [1, 1, 0]]], 
   Z: [[[0, 1], [1, 1], [1, 0]], [[1, 1, 0], [0, 1, 1]]], 
   I: [[[1], [1], [1], [1]], [[1, 1, 1, 1]]], 
   O: [[[1, 1],[1, 1]]],
 }
-
-const WIDTH = 20;
-const HEIGHT = 30;
-const PIXEL = 20;
-const DEFAULT_SPEED = 1;
 
 // TODO: Increase as you level up
 let movesPerSecond = DEFAULT_SPEED;
@@ -38,22 +39,38 @@ const ctx = canvas.getContext('2d');
 let floor = createFloor();
 let piece = createPiece(ctx, floor.tiles);
 
-function getRandom(obj) {
-  const values = Object.values(obj);
-  return values[Math.floor(Math.random() * values.length)]
+function getRandomKey(obj) {
+  const keys = Object.keys(obj);
+  return keys[Math.floor(Math.random() * keys.length)]
 }
 
 function createFloor() {
-  const tiles = Array(HEIGHT).fill([])
-    .map((_, row) => Array(WIDTH).fill(null)
+  const createRow = (row) =>
+    Array(WIDTH).fill(null)
       .map((_, col) => {
-        const color = row === HEIGHT - 1 ? Colors.BROWN : null;
-        return createTile(ctx, color, row, col)
-      }))
+        // const color = row === HEIGHT - 1 ? Colors.BROWN : null;
+        return createTile(ctx, null)
+      })
+
+  const tiles = Array(HEIGHT).fill([])
+    .map((_, row) => createRow())
 
   const checkTop = () => tiles[0].some((tile) => !tile.isEmpty)
 
-  return {tiles, checkTop}
+  const add = (tile, row, col) => {
+    tiles[row][col] = tile;
+  }
+
+  const clearRows = () => {
+    tiles.forEach((row, i) => {
+      if (row.every((t) => !t.isEmpty)) {
+        tiles.splice(i, 1)
+        tiles.unshift(createRow())
+      }
+    });
+  }
+
+  return {tiles, checkTop, add, update: clearRows}
 }
 
 const bg = {
@@ -90,15 +107,16 @@ const startLoop = () => {
 
 function updateWorld(piece) {
   piece.update()
-  // TODO: Update lines if piece clears a row
+  floor.update();
 }
 
 function drawWorld(piece, floorTiles, bg) {
   bg.render();
   piece.render();
-  floorTiles.forEach((row) => {
-    row.forEach((tile) => {
-      tile.render();
+  floorTiles.forEach((row, rowIdx) => {
+    row.forEach((tile, colIdx) => {
+      // TODO: consistent row/col
+      tile.render(rowIdx, colIdx);
     })
   });
 }
@@ -140,36 +158,39 @@ function registerKeys(fns) {
   }
 }
 
-function createTile(ctx, color, row, col) {
+function createTile(ctx, color) {
   const isEmpty = !color;
   const fillColor = color || 'rgba(255, 255, 255, 0)';
 
-  const render = () => {
+  const render = (row, col) => {
     ctx.fillStyle = fillColor;
     ctx.fillRect(col * PIXEL, row * PIXEL, PIXEL, PIXEL)
   }
 
-  return { render, isEmpty } 
+  return { render, isEmpty} 
 }
 
 function createPiece(ctx, floorTiles) {
+  let random = getRandomKey(shapes);
   let pos = { x: WIDTH / 2, y: 0 }
-  let shape = getRandom(shapes);
-  let color = getRandom(Colors);
+  console.log('random', random);
+  let shape = shapes[random]
+  let color = colors[random]
   let rotation = 0;
   let endGame = false;
 
   function reset() {
+    random = getRandomKey(shapes);
     pos = { x: WIDTH / 2, y: 0 }
-    shape = getRandom(shapes);
-    color = getRandom(Colors);
+    shape = shapes[random];
+    color = colors[random]
     rotation = 0;
   }
 
   const moveRight = () => {
     // TODO: enable moving under ledges, block sideways
     // Check wall
-    if (pos.x + 1 >= WIDTH) return;
+    if (pos.x + shape[rotation][0].length >= WIDTH) return;
     // Check floor
     if (!floorTiles[pos.y][pos.x + 1].isEmpty) return;
 
@@ -219,8 +240,7 @@ function createPiece(ctx, floorTiles) {
               const boxOriginX = pos.x + boxIdx;
               const boxOriginY = pos.y + rowIdx;
               if (box) {
-                floorTiles[boxOriginY][boxOriginX] = createTile(ctx, color, boxOriginY, boxOriginX)
-                // Can't return early because we need to transfer all tiles to floor
+                floor.add(createTile(ctx, color), boxOriginY, boxOriginX)
                 hitFloor = true;
               }
             })
