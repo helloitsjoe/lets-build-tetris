@@ -19,7 +19,6 @@ const colors = {
   O: 'blueviolet',
 }
 
-// TODO: Make sure shapes rotate in the right direction
 // Hardcode all rotations to start
 const shapes = {
   L: [[[1, 0], [1, 0], [1, 1]], [[1, 1, 1], [1, 0, 0]], [[1, 1], [0, 1], [0, 1]], [[0, 0, 1], [1, 1, 1]] ], 
