@@ -79,30 +79,6 @@ const bg = {
   }
 }
 
-const startLoop = () => {
-  let id = null;
-  let prev = 0;
-  function loop() {
-    id = requestAnimationFrame((elapsed) => {
-      if (elapsed - prev > 1000 / movesPerSecond) {
-        updateWorld(piece)
-        if (floor.checkTop()) {
-          cancelAnimationFrame(id);
-          alert('Game Over!')
-          resetGame();
-        }
-        prev = elapsed
-      }
-      drawWorld(piece, floor.tiles, bg)
-      loop()
-    });
-  }
-
-  loop()
-  const getId = () => id;
-  return getId
-}
-
 
 function updateWorld(piece) {
   piece.update()
@@ -266,6 +242,28 @@ function createPiece(ctx, floorTiles) {
 
 const playPauseButton = document.getElementById('playPause');
 const resetButton = document.getElementById('reset');
+
+const startLoop = () => {
+  let id = null;
+  let prev = 0;
+  function loop(elapsed) {
+      if (elapsed - prev > 1000 / movesPerSecond) {
+        updateWorld(piece)
+        if (floor.checkTop()) {
+          cancelAnimationFrame(id);
+          alert('Game Over!')
+          resetGame();
+        }
+        prev = elapsed
+      }
+      drawWorld(piece, floor.tiles, bg)
+    id = requestAnimationFrame(loop)
+  }
+
+  loop()
+  const getId = () => id;
+  return getId
+}
 
 let getId = startLoop();
 playPauseButton.onclick = () => {
