@@ -1,287 +1,380 @@
-const canvas = document.getElementById('canvas');
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
 
 const WIDTH = 10;
 const HEIGHT = 20;
-const PIXEL = 20;
+const TILE_SIZE = 20;
 const DEFAULT_SPEED = 1;
 
-canvas.width = WIDTH * PIXEL;
-canvas.height = HEIGHT * PIXEL;
+canvas.width = WIDTH * TILE_SIZE;
+canvas.height = HEIGHT * TILE_SIZE;
 canvas.style.backgroundColor = 'black';
 
-const colors = {
-  L: 'dodgerblue',
-  J: 'tomato',
-  T: 'lime',
-  S: 'orange',
-  Z: 'yellow',
-  I: 'violet',
-  O: 'blueviolet',
-}
+let speed = DEFAULT_SPEED;
 
-// Hardcode all rotations to start
+const colors = [
+  'tomato',
+  'orange',
+  'dodgerblue',
+  'blueviolet',
+  'magenta',
+  'lime',
+  'yellow',
+];
+
 const shapes = {
-  L: [[[1, 0], [1, 0], [1, 1]], [[1, 1, 1], [1, 0, 0]], [[1, 1], [0, 1], [0, 1]], [[0, 0, 1], [1, 1, 1]] ], 
-  J: [[[0, 1], [0, 1], [1, 1]], [[1, 0, 0], [1, 1, 1]], [[1, 1], [1, 0], [1, 0]], [[1, 1, 1], [0, 0, 1]]], 
-  T: [[[1, 0], [1, 1], [1, 0]], [[0, 1, 0], [1,1, 1]], [[0, 1], [1, 1], [0, 1]], [[1, 1, 1], [0, 1, 0]]], 
-  S: [[[1, 0], [1, 1], [0, 1]], [[0, 1, 1], [1, 1, 0]]], 
-  Z: [[[0, 1], [1, 1], [1, 0]], [[1, 1, 0], [0, 1, 1]]], 
-  I: [[[1], [1], [1], [1]], [[1, 1, 1, 1]]], 
-  O: [[[1, 1],[1, 1]]],
+  L: [
+    [1, 0],
+    [1, 0],
+    [1, 1],
+  ],
+  J: [
+    [0, 1],
+    [0, 1],
+    [1, 1],
+  ],
+  T: [
+    [1, 0],
+    [1, 1],
+    [1, 0],
+  ],
+  O: [
+    [1, 1],
+    [1, 1],
+  ],
+  I: [[1], [1], [1], [1]],
+  S: [
+    [0, 1],
+    [1, 1],
+    [1, 0],
+  ],
+  Z: [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ],
+};
+
+function getRandomNum(num) {
+  return Math.floor(Math.random() * num);
 }
 
-// TODO: Increase as you level up
-let movesPerSecond = DEFAULT_SPEED;
+const floor = createFloor();
+const piece = createPiece(floor);
+const bg = createBg();
 
-const ctx = canvas.getContext('2d');
+function createTile({ color = 'black', isEmpty }) {
+  const render = (x, y) => {
+    if (!isEmpty) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  };
 
-let floor = createFloor();
-let piece = createPiece(ctx, floor.tiles);
-
-function getRandomKey(obj) {
-  const keys = Object.keys(obj);
-  return keys[Math.floor(Math.random() * keys.length)]
+  return { render, isEmpty };
 }
 
 function createFloor() {
-  const createRow = (row) =>
-    Array(WIDTH).fill(null)
-      .map((_, col) => {
-        // const color = row === HEIGHT - 1 ? Colors.BROWN : null;
-        return createTile(ctx, null)
-      })
+  let tiles = createTiles();
 
-  const tiles = Array(HEIGHT).fill([])
-    .map((_, row) => createRow())
-
-  const checkTop = () => tiles[0].some((tile) => !tile.isEmpty)
-
-  const add = (tile, row, col) => {
-    tiles[row][col] = tile;
+  function createTiles() {
+    return Array(HEIGHT)
+      .fill([])
+      .map(() => Array(WIDTH).fill(createTile({ isEmpty: true })));
   }
 
-  const clearRows = () => {
-    tiles.forEach((row, i) => {
-      if (row.every((t) => !t.isEmpty)) {
-        tiles.splice(i, 1)
-        tiles.unshift(createRow())
-      }
+  const reset = () => {
+    tiles = createTiles();
+  };
+
+  const isFilled = (x, y) => {
+    return !tiles[y][x].isEmpty;
+  };
+
+  const render = () => {
+    tiles.forEach((row, rowIdx) => {
+      row.forEach((tile, colIdx) => {
+        tile.render(colIdx, rowIdx);
+      });
     });
-  }
+  };
 
-  return {tiles, checkTop, add, update: clearRows}
-}
+  const fillTile = (col, row, color) => {
+    tiles[row][col] = createTile({
+      isEmpty: false,
+      color,
+    });
+  };
 
-const bg = {
-  render: () => {
-    ctx.fillStyle = 'black'
-    ctx.fillRect(0, 0, WIDTH * PIXEL, HEIGHT * PIXEL)
-  }
-}
-
-
-function updateWorld(piece) {
-  piece.update()
-  floor.update();
-}
-
-function drawWorld(piece, floorTiles, bg) {
-  bg.render();
-  piece.render();
-  floorTiles.forEach((row, rowIdx) => {
-    row.forEach((tile, colIdx) => {
-      // TODO: consistent row/col
-      tile.render(rowIdx, colIdx);
-    })
-  });
-}
-
-function registerKeys(fns) {
-  const down = (e) => {
-    switch (e.key) {
-      case 'ArrowRight': 
-        fns.moveRight()
-        break;
-      case 'ArrowLeft': 
-        fns.moveLeft()
-        break;
-      case 'ArrowDown': 
-        fns.drop()
-        break;
-      case 'ArrowUp':
-      case ' ':
-        fns.rotate()
-        break;
+  const update = () => {
+    for (const [rowIdx, row] of tiles.entries()) {
+      if (row.every((tile) => !tile.isEmpty)) {
+        tiles.splice(rowIdx, 1);
+        tiles.unshift(
+          Array(WIDTH)
+            .fill(null)
+            .map(() => createTile({ isEmpty: true }))
+        );
+      }
     }
-  }
+  };
 
-  const up = (e) => {
-    switch (e.key) {
-      case 'ArrowDown': 
-        fns.stopDrop()
-        break;
-    }
-  }
-
-  document.addEventListener('keydown', down)
-  document.addEventListener('keyup', up)
-
-  return () => {
-    fns.stopDrop();
-    document.removeEventListener('keydown', down);
-    document.removeEventListener('keyup', up);
-  }
+  return { render, update, fillTile, reset, isFilled };
 }
 
-function createTile(ctx, color) {
-  const isEmpty = !color;
-  const fillColor = color || 'rgba(255, 255, 255, 0)';
+function createPiece(floor) {
+  let pos = { x: WIDTH / 2, y: 0 };
+  let randomIdx = getRandomNum(7);
+  let color = colors[randomIdx];
+  let shape = Object.values(shapes)[randomIdx];
 
-  const render = (row, col) => {
-    ctx.fillStyle = fillColor;
-    ctx.fillRect(col * PIXEL, row * PIXEL, PIXEL, PIXEL)
-  }
+  const reset = () => {
+    pos = { x: WIDTH / 2, y: 0 };
+    randomIdx = getRandomNum(7);
+    color = colors[randomIdx];
+    shape = Object.values(shapes)[randomIdx];
+    stopMoveDown();
+  };
 
-  return { render, isEmpty} 
-}
-
-function createPiece(ctx, floorTiles) {
-  let random = getRandomKey(shapes);
-  let pos = { x: WIDTH / 2, y: 0 }
-  console.log('random', random);
-  let shape = shapes[random]
-  let color = colors[random]
-  let rotation = 0;
-  let endGame = false;
-
-  function reset() {
-    random = getRandomKey(shapes);
-    pos = { x: WIDTH / 2, y: 0 }
-    shape = shapes[random];
-    color = colors[random]
-    rotation = 0;
-  }
-
-  const moveRight = () => {
-    // TODO: enable moving under ledges, block sideways
-    // Check wall
-    if (pos.x + shape[rotation][0].length >= WIDTH) return;
-    // Check floor
-    if (!floorTiles[pos.y][pos.x + 1].isEmpty) return;
-
-    pos.x += 1;
-  }
-
-  const moveLeft = () => {
-    // TODO: enable moving under ledges, block sideways
-    // Check wall
-    if (pos.x - 1 < 0) return;
-    // Check floor
-    if (!floorTiles[pos.y][pos.x - 1].isEmpty) return;
-
-    pos.x -= 1;
-  }
-
-  const drop = () => movesPerSecond = 60;
-  const stopDrop = () => movesPerSecond = DEFAULT_SPEED;
-  const rotate = () => rotation = (rotation + 1) % shape.length;
-
-  const cleanup = registerKeys({moveRight, moveLeft, drop, stopDrop, rotate});
+  const isOffscreenBottom = () => pos.y + shape.length >= HEIGHT;
+  const isOffscreenLeft = () => pos.x <= 0;
+  const isOffscreenRight = () => pos.x + shape[0].length >= WIDTH;
 
   const render = () => {
     ctx.fillStyle = color;
-    shape[rotation].forEach((row, rowIdx) => {
-      row.forEach((box, boxIdx) => {
-        if (!!box) {
-          const boxOriginX = pos.x + boxIdx;
-          const boxOriginY = pos.y + rowIdx;
-          ctx.fillRect(boxOriginX * PIXEL, boxOriginY * PIXEL, PIXEL, PIXEL)
+    shape.forEach((row, rowIdx) => {
+      row.forEach((col, colIdx) => {
+        if (col) {
+          ctx.fillRect(
+            (pos.x + colIdx) * TILE_SIZE,
+            (pos.y + rowIdx) * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE
+          );
         }
-      })
+      });
     });
-  }
+  };
 
-  const _checkHitFloor = () => {
-    // Can be optimized by just looking at last row
-    let hitFloor = false;
-    shape[rotation].forEach((row, rowIdx) => {
-      row.forEach((box, boxIdx) => {
-        const boxOriginX = pos.x + boxIdx;
-        const boxOriginY = pos.y + rowIdx;
+  const transferToFloor = () => {
+    shape.forEach((row, rowIdx) => {
+      row.forEach((tile, colIdx) => {
+        if (!tile) return;
 
-        if (box && !floorTiles[boxOriginY + 1]?.[boxOriginX].isEmpty) {
-          shape[rotation].forEach((row, rowIdx) => {
-            row.forEach((box, boxIdx) => {
-              const boxOriginX = pos.x + boxIdx;
-              const boxOriginY = pos.y + rowIdx;
-              if (box) {
-                floor.add(createTile(ctx, color), boxOriginY, boxOriginX)
-                hitFloor = true;
-              }
-            })
-          })
-        }
-      })
+        const xPositionPlusOffset = pos.x + colIdx;
+        const yPositionPlusOffset = pos.y + rowIdx;
+        // transfer to floor
+        floor.fillTile(xPositionPlusOffset, yPositionPlusOffset, color);
+      });
     });
-
-    return hitFloor;
-  }
+    reset();
+  };
 
   const update = () => {
-    const hitFloor = _checkHitFloor();
-
-    if (hitFloor) {
-      reset()
-    } else  {
-      pos.y += 1;
+    if (isOffscreenBottom()) {
+      transferToFloor();
+      return;
     }
-  }
 
-  return { pos, render, update, cleanup, reset }
-}
+    for (const [rowIdx, row] of shape.entries()) {
+      for (const [colIdx, tile] of row.entries()) {
+        if (tile && floor.isFilled(pos.x + colIdx, pos.y + rowIdx + 1)) {
+          if (pos.y === 0) {
+            window.alert('Game over!');
+            resetGame();
+            return;
+          }
 
-const playPauseButton = document.getElementById('playPause');
-const resetButton = document.getElementById('reset');
-
-const startLoop = () => {
-  let id = null;
-  let prev = 0;
-  function loop(elapsed) {
-      if (elapsed - prev > 1000 / movesPerSecond) {
-        updateWorld(piece)
-        if (floor.checkTop()) {
-          cancelAnimationFrame(id);
-          alert('Game Over!')
-          resetGame();
+          transferToFloor();
+          return;
         }
-        prev = elapsed
       }
-      drawWorld(piece, floor.tiles, bg)
-    id = requestAnimationFrame(loop)
-  }
+    }
 
-  loop()
-  const getId = () => id;
-  return getId
+    pos.y += 1;
+  };
+
+  const moveLeft = () => {
+    if (isOffscreenLeft()) {
+      return;
+    }
+
+    for (const [rowIdx, row] of shape.entries()) {
+      for (const [colIdx, tile] of row.entries()) {
+        if (tile && floor.isFilled(pos.x + colIdx - 1, pos.y + rowIdx)) {
+          return;
+        }
+      }
+    }
+
+    pos.x -= 1;
+  };
+
+  const moveRight = () => {
+    if (isOffscreenRight()) {
+      return;
+    }
+
+    for (const [rowIdx, row] of shape.entries()) {
+      for (const [colIdx, tile] of row.entries()) {
+        if (tile && floor.isFilled(pos.x + colIdx + 1, pos.y + rowIdx)) {
+          return;
+        }
+      }
+    }
+
+    pos.x += 1;
+  };
+
+  const moveDown = () => {
+    speed = 50;
+  };
+
+  const stopMoveDown = () => {
+    speed = DEFAULT_SPEED;
+  };
+
+  const rotate = () => {
+    const newShape = Array(shape[0].length)
+      .fill(null)
+      .map(() => []);
+
+    for (const row of shape) {
+      for (const [colIdx, col] of row.entries()) {
+        newShape[colIdx].unshift(col);
+      }
+    }
+
+    const prevX = pos.x;
+    const prevY = pos.y;
+    const prevShape = shape;
+
+    shape = newShape;
+
+    if (isOffscreenBottom()) {
+      pos.y = HEIGHT - shape.length;
+    }
+
+    if (isOffscreenLeft()) {
+      pos.x = 0;
+    }
+
+    if (isOffscreenRight()) {
+      pos.x = WIDTH - shape[0].length;
+    }
+
+    for (const [rowIdx, row] of shape.entries()) {
+      for (const [colIdx, tile] of row.entries()) {
+        if (tile && floor.isFilled(pos.x + colIdx, pos.y + rowIdx)) {
+          shape = prevShape;
+          pos.x = prevX;
+          pos.y = prevY;
+          return;
+        }
+      }
+    }
+  };
+
+  const moveFns = { moveLeft, moveRight, moveDown, stopMoveDown, rotate };
+
+  // Don't need to deregister unless we start creating more pieces
+  registerKeys(moveFns);
+
+  return { render, update, reset };
 }
 
-let getId = startLoop();
-playPauseButton.onclick = () => {
-  if (!getId) {
-    getId = startLoop();
-  } else {
-    const id = getId();
-    cancelAnimationFrame(id)
-    getId = null;
-  }
+function createBg() {
+  const render = () => {
+    ctx.clearRect(0, 0, WIDTH * TILE_SIZE, HEIGHT * TILE_SIZE);
+  };
+  return { render };
 }
 
-function resetGame() {
+function updateWorld() {
+  // Updating positions of entities
+  piece.update();
+  floor.update();
+}
+
+function renderWorld() {
+  // Drawing things
   bg.render();
-  piece.cleanup();
-  floor = createFloor();
-  piece = createPiece(ctx, floor.tiles);
+  floor.render();
   piece.render();
 }
 
-resetButton.onclick = resetGame
+function registerKeys(fns) {
+  const keyDown = (e) => {
+    switch (e.key) {
+      case 'ArrowLeft':
+        fns.moveLeft();
+        break;
+      case 'ArrowRight':
+        fns.moveRight();
+        break;
+      case 'ArrowDown':
+        fns.moveDown();
+        break;
+      case 'ArrowUp':
+        fns.rotate();
+        break;
+    }
+  };
+
+  const keyUp = (e) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        fns.stopMoveDown();
+        break;
+    }
+  };
+
+  document.addEventListener('keydown', keyDown);
+  document.addEventListener('keyup', keyUp);
+
+  return () => {
+    document.removeEventListener('keydown', keyDown);
+    document.removeEventListener('keyup', keyUp);
+  };
+}
+
+let start = 0;
+let animId = null;
+
+const loop = (elapsed) => {
+  const secondHasPassed = elapsed - start >= 1000 / speed;
+  if (secondHasPassed) {
+    start = elapsed;
+    updateWorld();
+  }
+  renderWorld();
+  animId = requestAnimationFrame(loop);
+};
+
+function resetGame() {
+  bg.render();
+  floor.reset();
+  piece.reset();
+  if (!animId) {
+    animId = requestAnimationFrame(loop);
+  }
+}
+
+function playPause() {
+  if (animId) {
+    console.log('cancelling...');
+    cancelAnimationFrame(animId);
+    animId = null;
+  } else {
+    console.log('restarting...');
+    animId = requestAnimationFrame(loop);
+  }
+}
+
+const playPauseButton = document.getElementById('play-pause');
+const resetButton = document.getElementById('reset');
+
+playPauseButton.addEventListener('click', playPause);
+resetButton.addEventListener('click', resetGame);
+
+requestAnimationFrame(loop);
