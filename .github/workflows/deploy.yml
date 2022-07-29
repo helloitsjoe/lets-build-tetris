@@ -13,6 +13,5 @@ jobs:
           node-version: 14
           cache: yarn
       - run: yarn
-      - run: yarn test --silent
       - uses: helloitsjoe/deploy-github-pages@v1
 
