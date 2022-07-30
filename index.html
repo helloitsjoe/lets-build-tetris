@@ -1,10 +1,49 @@
 <html>
   <head>
     <title>Tetris!</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: black;
+      }
+
+      canvas {
+        border: 1px solid white;
+      }
+
+      button {
+        background: black;
+        border: 1px solid white;
+        color: white;
+        box-sizing: border-box;
+        padding: 1em;
+        flex: 1;
+      }
+
+      button:focus {
+        background: white;
+        border: 1px solid black;
+        color: black;
+        outline: none;
+      }
+
+      .container {
+        margin: 1em auto;
+        width: 200px;
+      }
+
+      .btn-group {
+        display: flex;
+        justify-content: space-between;
+        gap: 1em;
+        margin-bottom: 1em;
+      }
+    </style>
   </head>
   <body>
-    <div style="text-align: center;">
-      <div style="margin-bottom: 0.75em;">
+    <div class="container">
+      <div class="btn-group">
         <button id="play-pause" autofocus>Play/pause</button>
         <button id="reset">Reset</button>
       </div>
