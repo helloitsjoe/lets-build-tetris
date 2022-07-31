@@ -10,6 +10,11 @@ canvas.width = WIDTH * TILE_SIZE;
 canvas.height = HEIGHT * TILE_SIZE;
 canvas.style.backgroundColor = 'black';
 
+// TODO:
+// Keep track of lines
+// Speed up
+// Next piece
+
 let speed = DEFAULT_SPEED;
 
 const colors = [
