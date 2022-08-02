@@ -1,4 +1,4 @@
-# Tetris!
+# Let's Build Tetris!
 
 This repo accompanies the Let's Build Tetris! YouTube series. (TODO: Link)
 
